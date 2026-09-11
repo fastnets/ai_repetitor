@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QMessageBox, QStackedWid
 
 from ..config import ASSETS_DIR, BACKEND_URL
 from ..services.api import ApiWorker
+from ..services.task_detection import is_likely_math_task
 from .pages import HomePage, LessonPage, ParentPage, ProgressPage, TasksPage
 from .sidebar import Sidebar
 
@@ -22,6 +23,7 @@ class MainWindow(QMainWindow):
         self.pending_text = ""
         self.messages = []
         self.latest_session_id = None
+        self.current_task = None
         self.pool = QThreadPool.globalInstance()
         self.session_file = Path(os.getenv("LOCALAPPDATA", Path.home())) / "AI-Tutor" / "session.json"
         self.setWindowTitle("Умный друг — AI-репетитор")
@@ -117,11 +119,19 @@ class MainWindow(QMainWindow):
     def render_messages(self):
         lesson = self.pages["lesson"]
         lesson.clear_messages()
+        self.current_task = None
         if self.messages:
             for message in self.messages:
                 lesson.add_message(message["role"], message["content"])
-            first_task = next((item["content"] for item in self.messages if item["role"] == "user"), "")
-            lesson.set_task(first_task)
+            self.current_task = next(
+                (
+                    item["content"]
+                    for item in self.messages
+                    if item["role"] == "user" and is_likely_math_task(item["content"])
+                ),
+                None,
+            )
+            lesson.set_task(self.current_task or "")
         else:
             lesson.add_message("assistant", WELCOME)
             lesson.set_task()
@@ -159,7 +169,8 @@ class MainWindow(QMainWindow):
         lesson = self.pages["lesson"]
         lesson.take_input()
         self.pending_text = text
-        if not any(item["role"] == "user" for item in self.messages):
+        if not self.current_task and is_likely_math_task(text):
+            self.current_task = text
             lesson.set_task(text)
         self.messages.append({"role": "user", "content": text})
         lesson.add_message("user", text)

@@ -26,8 +26,12 @@ class TaskCard(Card):
         self.text.setStyleSheet("font-size:15px; color:#29304A")
         layout.addLayout(header)
         layout.addWidget(self.text)
+        self.setVisible(False)
 
     def set_task(self, text: str, source: str = ""):
-        self.text.setText(text or "Напиши условие задачи — разберём его вместе.")
+        self.setVisible(bool(text))
+        if not text:
+            return
+        self.text.setText(text)
         self.source.setText(source)
         self.source.setVisible(bool(source))
