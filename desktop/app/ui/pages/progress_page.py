@@ -1,69 +1,76 @@
-from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from ...services.mock_data import PROGRESS
-from ..assets import icon
-from ..widgets import Card, PageTitle, SectionTitle, StatCard, TopicProgress
+from ..widgets import Card, PageTitle, SectionTitle, StatCard
 from .base import ScrollPage
-
-
-def text_card(title: str, text: str, tone="surface"):
-    layout = QVBoxLayout()
-    layout.setContentsMargins(20, 18, 20, 18)
-    layout.setSpacing(8)
-    card = Card(layout, tone)
-    heading = QLabel(title)
-    heading.setStyleSheet("font-size:16px; font-weight:700")
-    body = QLabel(text)
-    body.setWordWrap(True)
-    body.setStyleSheet("color:#59637A")
-    layout.addWidget(heading)
-    layout.addWidget(body)
-    return card
 
 
 class ProgressPage(ScrollPage):
     def __init__(self):
         super().__init__()
-        title_row = QHBoxLayout()
-        title_row.addWidget(PageTitle("Мои успехи", "Твой прогресс по математике"))
-        title_row.addStretch()
-        demo = QLabel("Демо-данные")
-        demo.setStyleSheet("background:#FFF1C7; color:#8A6200; border-radius:10px; padding:6px 10px")
-        title_row.addWidget(demo)
-        self.layout.addLayout(title_row)
+        self.layout.addWidget(PageTitle("Мои успехи", "Только данные из твоих занятий"))
 
         stats = QHBoxLayout()
         stats.setSpacing(15)
-        stats.addWidget(StatCard(PROGRESS["solved"], "Решено задач"), 1)
-        stats.addWidget(StatCard(PROGRESS["lessons"], "Занятий", "#24A879"), 1)
-        stats.addWidget(StatCard(PROGRESS["independence"], "Средняя самостоятельность", "#D99A00"), 1)
+        self.completed = StatCard("0", "Завершено задач")
+        self.lessons = StatCard("0", "Начато занятий", "#24A879")
+        self.messages = StatCard("0", "Сообщений ученика", "#D99A00")
+        stats.addWidget(self.completed, 1)
+        stats.addWidget(self.lessons, 1)
+        stats.addWidget(self.messages, 1)
         self.layout.addLayout(stats)
 
-        progress_layout = QVBoxLayout()
-        progress_layout.setContentsMargins(22, 20, 22, 20)
-        progress_layout.setSpacing(7)
-        progress_layout.addWidget(SectionTitle("Прогресс по темам"))
-        for topic, value in PROGRESS["topics"]:
-            progress_layout.addWidget(TopicProgress(topic, value))
-        self.layout.addWidget(Card(progress_layout))
+        topic_layout = QVBoxLayout()
+        topic_layout.setContentsMargins(22, 20, 22, 20)
+        topic_layout.setSpacing(12)
+        topic_layout.addWidget(SectionTitle("Темы занятий"))
+        self.topic_host = QWidget()
+        self.topic_rows = QVBoxLayout(self.topic_host)
+        self.topic_rows.setContentsMargins(0, 0, 0, 0)
+        self.topic_rows.setSpacing(9)
+        topic_layout.addWidget(self.topic_host)
+        self.layout.addWidget(Card(topic_layout))
 
-        insights = QHBoxLayout()
-        insights.setSpacing(15)
-        insights.addWidget(text_card("Получается хорошо", "Сложение столбиком и задачи на периметр — уверенно!", "mint"), 1)
-        insights.addWidget(text_card("Стоит повторить", "Единицы времени и деление с остатком.", "lavender"), 1)
-        self.layout.addLayout(insights)
-
-        achievements = QHBoxLayout()
-        achievements.setContentsMargins(20, 17, 20, 17)
-        badge = QLabel()
-        badge.setPixmap(icon("achievement").pixmap(38, 38))
-        achievements.addWidget(badge)
-        copy = QVBoxLayout()
-        copy.addWidget(SectionTitle("Мои достижения"))
-        detail = QLabel("7 дней занятий • 10 задач без подсказки • Знаток периметра")
-        detail.setWordWrap(True)
-        detail.setObjectName("muted")
-        copy.addWidget(detail)
-        achievements.addLayout(copy, 1)
-        self.layout.addWidget(Card(achievements))
+        note_layout = QVBoxLayout()
+        note_layout.setContentsMargins(20, 18, 20, 18)
+        note_layout.addWidget(SectionTitle("Оценка навыков"))
+        note = QLabel(
+            "Пока репетитор не сохраняет проверенную оценку знаний, поэтому проценты, "
+            "сильные стороны и рекомендации не показываются."
+        )
+        note.setWordWrap(True)
+        note.setObjectName("muted")
+        note_layout.addWidget(note)
+        self.layout.addWidget(Card(note_layout, "lavender"))
+        self.set_stats({})
         self.layout.addStretch()
+
+    @staticmethod
+    def _set_stat(card: StatCard, value):
+        card.value_label.setText(str(value))
+
+    def set_stats(self, data: dict):
+        self._set_stat(self.completed, data.get("completed_tasks", 0))
+        self._set_stat(self.lessons, data.get("lessons_started", 0))
+        self._set_stat(self.messages, data.get("user_messages", 0))
+        while self.topic_rows.count():
+            item = self.topic_rows.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        topics = data.get("topic_activity") or []
+        if not topics:
+            empty = QLabel("Пока нет данных по темам")
+            empty.setObjectName("muted")
+            self.topic_rows.addWidget(empty)
+            return
+        for topic in topics:
+            row = QHBoxLayout()
+            name = QLabel(topic["name"])
+            name.setStyleSheet("font-size:15px; font-weight:650")
+            count = QLabel(f"{topic['lessons']} занятие" if topic["lessons"] == 1 else f"{topic['lessons']} занятий")
+            count.setObjectName("muted")
+            row.addWidget(name)
+            row.addStretch()
+            row.addWidget(count)
+            wrapper = QWidget()
+            wrapper.setLayout(row)
+            self.topic_rows.addWidget(wrapper)

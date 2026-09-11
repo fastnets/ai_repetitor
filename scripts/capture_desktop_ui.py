@@ -14,12 +14,20 @@ from app.ui.styles.theme import APP_QSS
 
 def no_network_restore(window):
     window.session_id = "screenshot-session"
-    window.messages = [
-        {"role": "assistant", "content": "Давай разберём задачу вместе. Что узнаем первым действием?"},
-        {"role": "user", "content": "Сначала узнаю, сколько морковок у двух детей вместе."},
-        {"role": "assistant", "content": "Отличная мысль! Какое выражение запишем?"},
-    ]
+    window.messages = []
     window.render_messages()
+    window.apply_stats(
+        {
+            "lessons_started": 0,
+            "completed_tasks": 0,
+            "today_completed": 0,
+            "user_messages": 0,
+            "last_task": None,
+            "recent_tasks": [],
+            "topic_activity": [],
+            "latest_lesson": None,
+        }
+    )
 
 
 def main():

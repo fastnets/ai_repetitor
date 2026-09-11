@@ -38,11 +38,11 @@ class StatCard(Card):
         layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(5)
         super().__init__(layout)
-        number = QLabel(str(value))
-        number.setStyleSheet(f"font-size:28px; font-weight:700; color:{accent}")
+        self.value_label = QLabel(str(value))
+        self.value_label.setStyleSheet(f"font-size:28px; font-weight:700; color:{accent}")
         caption = QLabel(label)
         caption.setObjectName("muted")
-        layout.addWidget(number)
+        layout.addWidget(self.value_label)
         layout.addWidget(caption)
 
 

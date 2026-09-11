@@ -5,11 +5,12 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .analytics import build_stats
 from .config import Settings, get_settings
 from .db import Base, make_engine, make_session_factory
 from .llm import LLMError, OpenAICompatibleClient
 from .models import LessonSession, Message, utcnow
-from .schemas import ChatRequest, ChatResponse, FinishResponse, MessageResponse, MessagesResponse, NewSessionResponse
+from .schemas import ChatRequest, ChatResponse, FinishResponse, MessageResponse, MessagesResponse, NewSessionResponse, StatsResponse
 from .textbook import TextbookSearch
 from .tutor import build_llm_messages, choose_state
 
@@ -46,6 +47,11 @@ def create_app(settings: Settings | None = None, llm_client=None) -> FastAPI:
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.get("/api/stats", response_model=StatsResponse)
+    def stats(db: Session = Depends(get_db)):
+        lessons = list(db.scalars(select(LessonSession).order_by(LessonSession.created_at.desc())))
+        return build_stats(lessons)
 
     @app.post("/api/session/new", response_model=NewSessionResponse)
     def new_session(db: Session = Depends(get_db)):

@@ -24,6 +24,19 @@ def test_navigation_and_lesson_flow(monkeypatch):
             success({"message": "Верно рассуждаешь! Какой будет следующий шаг?"})
         elif path.endswith("/finish"):
             success({"summary": "Тестовое занятие завершено."})
+        elif path == "/api/stats":
+            success(
+                {
+                    "lessons_started": 1,
+                    "completed_tasks": 0,
+                    "today_completed": 0,
+                    "user_messages": 1,
+                    "last_task": "Сколько будет 7 умножить на 8?",
+                    "recent_tasks": ["Сколько будет 7 умножить на 8?"],
+                    "topic_activity": [{"name": "Умножение", "lessons": 1}],
+                    "latest_lesson": None,
+                }
+            )
 
     window.run_api = fake_api
     monkeypatch.setattr(QMessageBox, "information", lambda *args: QMessageBox.StandardButton.Ok)

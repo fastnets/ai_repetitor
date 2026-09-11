@@ -1,24 +1,23 @@
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
-from ...services.mock_data import HOME
-from ..widgets import Card, Mascot, PageTitle, SectionTitle
+from ..widgets import Card, Mascot, SectionTitle
 from .base import ScrollPage
 
 
-def info_card(title, value, tone="surface"):
+def info_card(title, tone="surface"):
     layout = QVBoxLayout()
     layout.setContentsMargins(20, 18, 20, 18)
     layout.setSpacing(7)
     card = Card(layout, tone)
     label = QLabel(title)
     label.setObjectName("muted")
-    text = QLabel(value)
-    text.setWordWrap(True)
-    text.setStyleSheet("font-size:16px; font-weight:650")
+    value = QLabel("0")
+    value.setWordWrap(True)
+    value.setStyleSheet("font-size:16px; font-weight:650")
     layout.addWidget(label)
-    layout.addWidget(text)
-    return card
+    layout.addWidget(value)
+    return card, value
 
 
 class HomePage(ScrollPage):
@@ -32,7 +31,7 @@ class HomePage(ScrollPage):
         hero = Card(hero_layout, "lavender")
         copy = QVBoxLayout()
         copy.setSpacing(9)
-        title = QLabel(f"Привет, {HOME['student']}!")
+        title = QLabel("Привет, Артём!")
         title.setStyleSheet("font-size:30px; font-weight:800; color:#172033")
         subtitle = QLabel("Готов позаниматься математикой?")
         subtitle.setStyleSheet("font-size:17px; color:#59637A")
@@ -51,25 +50,34 @@ class HomePage(ScrollPage):
 
         stats = QHBoxLayout()
         stats.setSpacing(16)
-        stats.addWidget(info_card("Сегодня решено", f"{HOME['today_solved']} задачи", "mint"), 1)
-        stats.addWidget(info_card("Последняя тема", HOME["last_topic"]), 1)
+        today_card, self.today_value = info_card("Сегодня завершено", "mint")
+        last_card, self.last_value = info_card("Последняя задача")
+        self.last_value.setText("Пока нет данных")
+        stats.addWidget(today_card, 1)
+        stats.addWidget(last_card, 1)
         self.layout.addLayout(stats)
 
-        self.layout.addWidget(SectionTitle("Твои занятия"))
-        grid = QGridLayout()
-        grid.setSpacing(16)
-        recent = "\n".join(f"• {item}" for item in HOME["recent"])
-        grid.addWidget(info_card("Последние задания", recent), 0, 0, 2, 1)
-        grid.addWidget(info_card("У тебя хорошо получается", HOME["strong"], "mint"), 0, 1)
-        grid.addWidget(info_card("Стоит повторить", HOME["repeat"]), 1, 1)
-        self.layout.addLayout(grid)
-        continue_button = QPushButton("Продолжить последнее занятие")
-        continue_button.setObjectName("primary")
-        continue_button.setMinimumHeight(48)
-        continue_button.clicked.connect(self.continue_requested)
-        self.layout.addWidget(continue_button)
-        demo = QLabel("Данные карточек пока демонстрационные")
-        demo.setObjectName("muted")
-        demo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(demo)
+        self.layout.addWidget(SectionTitle("Последние задания"))
+        recent_layout = QVBoxLayout()
+        recent_layout.setContentsMargins(20, 18, 20, 18)
+        self.recent_value = QLabel("Пока нет сохранённых заданий")
+        self.recent_value.setWordWrap(True)
+        self.recent_value.setStyleSheet("color:#59637A; line-height:1.5")
+        recent_layout.addWidget(self.recent_value)
+        self.layout.addWidget(Card(recent_layout))
+
+        self.continue_button = QPushButton("Продолжить последнее занятие")
+        self.continue_button.setObjectName("primary")
+        self.continue_button.setMinimumHeight(48)
+        self.continue_button.setEnabled(False)
+        self.continue_button.clicked.connect(self.continue_requested)
+        self.layout.addWidget(self.continue_button)
         self.layout.addStretch()
+
+    def set_stats(self, data: dict):
+        self.today_value.setText(str(data.get("today_completed", 0)))
+        last_task = data.get("last_task")
+        self.last_value.setText(last_task or "Пока нет данных")
+        recent = data.get("recent_tasks") or []
+        self.recent_value.setText("\n\n".join(f"• {task}" for task in recent) if recent else "Пока нет сохранённых заданий")
+        self.continue_button.setEnabled(bool(last_task))

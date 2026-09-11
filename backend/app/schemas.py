@@ -34,3 +34,33 @@ class FinishResponse(BaseModel):
     status: str
     summary: str
 
+
+class TopicActivityResponse(BaseModel):
+    name: str
+    lessons: int
+
+
+class DialogueMessageResponse(BaseModel):
+    role: str
+    content: str
+
+
+class LatestLessonResponse(BaseModel):
+    session_id: str
+    status: str
+    task: str
+    duration_minutes: int | None
+    user_messages: int
+    summary: str | None
+    dialogue: list[DialogueMessageResponse]
+
+
+class StatsResponse(BaseModel):
+    lessons_started: int
+    completed_tasks: int
+    today_completed: int
+    user_messages: int
+    last_task: str | None
+    recent_tasks: list[str]
+    topic_activity: list[TopicActivityResponse]
+    latest_lesson: LatestLessonResponse | None

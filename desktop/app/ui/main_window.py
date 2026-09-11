@@ -21,6 +21,7 @@ class MainWindow(QMainWindow):
         self.session_id = None
         self.pending_text = ""
         self.messages = []
+        self.latest_session_id = None
         self.pool = QThreadPool.globalInstance()
         self.session_file = Path(os.getenv("LOCALAPPDATA", Path.home())) / "AI-Tutor" / "session.json"
         self.setWindowTitle("Умный друг — AI-репетитор")
@@ -55,12 +56,12 @@ class MainWindow(QMainWindow):
         self.sidebar.new_lesson_requested.connect(self.new_session)
         self.sidebar.settings_requested.connect(self.show_settings)
         self.pages["home"].start_requested.connect(self.new_session)
-        self.pages["home"].continue_requested.connect(lambda: self.show_page("lesson"))
+        self.pages["home"].continue_requested.connect(self.continue_latest_session)
         self.pages["lesson"].send_requested.connect(self.send_message)
         self.pages["lesson"].hint_requested.connect(self.send_hint)
         self.pages["lesson"].finish_requested.connect(self.finish_session)
         self.pages["tasks"].task_requested.connect(self.start_task)
-        self.pages["parent"].lesson_requested.connect(lambda: self.show_page("lesson"))
+        self.pages["parent"].lesson_requested.connect(self.continue_latest_session)
         self.pages["parent"].new_lesson_requested.connect(self.new_session)
         self.show_page("home")
 
@@ -101,11 +102,13 @@ class MainWindow(QMainWindow):
         self.save_session()
         self.reset_lesson()
         self.set_busy(False)
+        self.load_stats()
 
     def on_history(self, data):
         self.messages = list(data.get("messages", []))
         self.render_messages()
         self.set_busy(False)
+        self.load_stats()
 
     def on_restore_error(self, _message):
         self.session_id = None
@@ -177,6 +180,7 @@ class MainWindow(QMainWindow):
         self.pages["parent"].set_dialogue(self.messages)
         self.set_busy(False)
         self.pages["lesson"].input.setFocus()
+        self.load_stats()
 
     def finish_session(self):
         if not self.session_id:
@@ -186,7 +190,33 @@ class MainWindow(QMainWindow):
 
     def on_finish(self, data):
         self.set_busy(False)
+        self.load_stats()
         QMessageBox.information(self, "Итог занятия", data["summary"])
+
+    def load_stats(self):
+        self.run_api("GET", "/api/stats", None, self.apply_stats, lambda _message: None)
+
+    def apply_stats(self, data: dict):
+        latest = data.get("latest_lesson")
+        self.latest_session_id = latest.get("session_id") if latest else None
+        for name in ("home", "tasks", "progress", "parent"):
+            self.pages[name].set_stats(data)
+
+    def continue_latest_session(self):
+        if not self.latest_session_id or self.latest_session_id == self.session_id:
+            self.show_page("lesson")
+            return
+        self.session_id = self.latest_session_id
+        self.save_session()
+        self.show_page("lesson")
+        self.set_busy(True)
+        self.run_api(
+            "GET",
+            f"/api/session/{self.session_id}/messages",
+            None,
+            self.on_history,
+            self.on_restore_error,
+        )
 
     def on_error(self, message: str):
         self.set_busy(False)

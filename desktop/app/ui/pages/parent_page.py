@@ -1,24 +1,23 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
-from ...services.mock_data import PARENT
 from ..widgets import Card, PageTitle, SectionTitle, StatCard
 from .base import ScrollPage
 
 
-def report_card(title: str, body: str, tone="surface"):
+def report_card(title: str, empty_text: str, tone="surface"):
     layout = QVBoxLayout()
     layout.setContentsMargins(20, 17, 20, 18)
     layout.setSpacing(8)
     card = Card(layout, tone)
     heading = QLabel(title)
     heading.setStyleSheet("font-size:16px; font-weight:700")
-    text = QLabel(body)
-    text.setWordWrap(True)
-    text.setStyleSheet("color:#59637A")
+    value = QLabel(empty_text)
+    value.setWordWrap(True)
+    value.setStyleSheet("color:#59637A")
     layout.addWidget(heading)
-    layout.addWidget(text)
-    return card
+    layout.addWidget(value)
+    return card, value
 
 
 class ParentPage(ScrollPage):
@@ -28,7 +27,7 @@ class ParentPage(ScrollPage):
     def __init__(self):
         super().__init__()
         title = QHBoxLayout()
-        title.addWidget(PageTitle("Отчёт для родителя", "Итоги занятия за сегодня"))
+        title.addWidget(PageTitle("Отчёт для родителя", "Последнее реальное занятие"))
         title.addStretch()
         profile = QLabel("Артём • 3 класс")
         profile.setStyleSheet("background:#ECEBFF; color:#4F46E5; border-radius:12px; padding:9px 14px; font-weight:700")
@@ -37,23 +36,30 @@ class ParentPage(ScrollPage):
 
         stats = QHBoxLayout()
         stats.setSpacing(15)
-        stats.addWidget(StatCard(PARENT["duration"], "Время занятия"), 1)
-        stats.addWidget(StatCard(PARENT["solved"], "Решено задач", "#24A879"), 1)
-        stats.addWidget(StatCard(PARENT["independence"], "Самостоятельность", "#D99A00"), 1)
+        self.duration = StatCard("—", "Время занятия")
+        self.status = StatCard("Нет", "Занятие завершено", "#24A879")
+        self.responses = StatCard("0", "Сообщений ученика", "#D99A00")
+        stats.addWidget(self.duration, 1)
+        stats.addWidget(self.status, 1)
+        stats.addWidget(self.responses, 1)
         self.layout.addLayout(stats)
 
         grid = QGridLayout()
         grid.setSpacing(15)
-        grid.addWidget(report_card("Что делали на занятии", PARENT["did"]), 0, 0)
-        grid.addWidget(report_card("Где возникли трудности", PARENT["difficulty"], "lavender"), 0, 1)
-        grid.addWidget(report_card("Что получилось хорошо", PARENT["success"], "mint"), 1, 0)
-        grid.addWidget(report_card("На что обратить внимание", PARENT["attention"]), 1, 1)
+        task_card, self.task = report_card("Что делали на занятии", "Пока нет данных")
+        result_card, self.result = report_card("Результат", "Пока нет данных", "mint")
+        difficulty_card, _ = report_card("Где возникли трудности", "Пока репетитор не сохраняет подтверждённую оценку трудностей.", "lavender")
+        success_card, _ = report_card("Что получилось хорошо", "Пока репетитор не сохраняет подтверждённую оценку навыков.")
+        grid.addWidget(task_card, 0, 0)
+        grid.addWidget(result_card, 0, 1)
+        grid.addWidget(difficulty_card, 1, 0)
+        grid.addWidget(success_card, 1, 1)
         self.layout.addLayout(grid)
 
         dialogue_layout = QVBoxLayout()
         dialogue_layout.setContentsMargins(20, 17, 20, 18)
         dialogue_layout.addWidget(SectionTitle("Фрагмент диалога"))
-        self.dialogue = QLabel("Умный друг: Какое действие поможет узнать число групп?\nАртём: Нужно разделить.")
+        self.dialogue = QLabel("Пока нет сообщений")
         self.dialogue.setWordWrap(True)
         self.dialogue.setStyleSheet("color:#59637A; padding-top:5px")
         dialogue_layout.addWidget(self.dialogue)
@@ -70,15 +76,37 @@ class ParentPage(ScrollPage):
         buttons.addWidget(view)
         buttons.addWidget(new)
         self.layout.addLayout(buttons)
-        note = QLabel("Статистика и рекомендации пока демонстрационные; итог завершённого занятия показывается отдельно.")
-        note.setObjectName("muted")
-        note.setWordWrap(True)
-        self.layout.addWidget(note)
         self.layout.addStretch()
+
+    def set_stats(self, data: dict):
+        latest = data.get("latest_lesson")
+        if not latest:
+            self.duration.value_label.setText("—")
+            self.status.value_label.setText("Нет")
+            self.responses.value_label.setText("0")
+            self.task.setText("Пока нет данных")
+            self.result.setText("Пока нет данных")
+            self.dialogue.setText("Пока нет сообщений")
+            return
+        minutes = latest.get("duration_minutes")
+        self.duration.value_label.setText("—" if minutes is None else ("<1 мин" if minutes == 0 else f"{minutes} мин"))
+        finished = latest.get("status") == "finished"
+        self.status.value_label.setText("Да" if finished else "Нет")
+        self.responses.value_label.setText(str(latest.get("user_messages", 0)))
+        self.task.setText(latest.get("task") or "Пока нет данных")
+        self.result.setText("Занятие завершено" if finished else "Занятие ещё продолжается")
+        dialogue = latest.get("dialogue") or []
+        lines = [
+            ("Артём" if item["role"] == "user" else "Умный друг") + ": " + item["content"]
+            for item in dialogue
+        ]
+        self.dialogue.setText("\n\n".join(lines) if lines else "Пока нет сообщений")
 
     def set_dialogue(self, messages):
         if not messages:
             return
-        excerpt = messages[-2:]
-        lines = [("Артём" if item["role"] == "user" else "Умный друг") + ": " + item["content"] for item in excerpt]
-        self.dialogue.setText("\n".join(lines))
+        lines = [
+            ("Артём" if item["role"] == "user" else "Умный друг") + ": " + item["content"]
+            for item in messages[-4:]
+        ]
+        self.dialogue.setText("\n\n".join(lines))
