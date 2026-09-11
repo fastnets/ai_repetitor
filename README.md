@@ -106,10 +106,10 @@ pytest -q
 ```powershell
 pip install pyinstaller
 cd desktop
-pyinstaller --noconfirm --clean --windowed --name AI-Tutor --paths . run.py
+pyinstaller --noconfirm --clean --onefile --windowed --name AI-Tutor --paths . run.py
 ```
 
-Результат появится в `desktop/dist/AI-Tutor/`. Переносите всю папку целиком: рядом с exe находятся библиотеки PySide6 и `.env` с `BACKEND_URL`.
+Результат появится как `desktop/dist/AI-Tutor.exe`. Файл можно перенести отдельно; для изменения адреса backend положите рядом с ним `.env` с `BACKEND_URL`.
 
 ## Основные файлы
 
