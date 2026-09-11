@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/tutor.db"
     textbook_index: Path = Path("../data/textbooks/index.json")
     llm_timeout_seconds: float = 45
+    llm_max_tokens: int = 250
+    llm_disable_thinking: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

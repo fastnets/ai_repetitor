@@ -27,13 +27,23 @@ def create_app(settings: Settings | None = None, llm_client=None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         Base.metadata.create_all(engine)
-        yield
-        engine.dispose()
+        try:
+            yield
+        finally:
+            close_llm = getattr(app.state.llm, "close", None)
+            if close_llm:
+                close_llm()
+            engine.dispose()
 
     app = FastAPI(title="AI-репетитор", version="0.1.0", lifespan=lifespan)
     app.state.session_factory = session_factory
     app.state.llm = llm_client or OpenAICompatibleClient(
-        settings.llm_base_url, settings.llm_api_key, settings.llm_model, settings.llm_timeout_seconds
+        settings.llm_base_url,
+        settings.llm_api_key,
+        settings.llm_model,
+        settings.llm_timeout_seconds,
+        settings.llm_max_tokens,
+        settings.llm_disable_thinking,
     )
     app.state.textbook = TextbookSearch(settings.textbook_index)
 
