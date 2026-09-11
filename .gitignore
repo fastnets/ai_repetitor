@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+dist*/
+build*/
+*.spec
+backend/data/*.db
+data/textbooks/index.json
+data/textbooks/*.pdf
+data/textbooks/*-ocr.pdf
