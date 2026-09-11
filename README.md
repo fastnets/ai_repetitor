@@ -1,4 +1,4 @@
-# AI-репетитор по математике — MVP
+# «Умный друг» — AI-репетитор по математике
 
 Рабочий прототип для одного ученика 3 класса. Desktop-приложение ведёт короткий диалог, а backend управляет ходом занятия, сохраняет историю в SQLite, ищет материалы в локальном индексе учебника и обращается к любому OpenAI-compatible LLM API.
 
@@ -101,15 +101,23 @@ pytest -q
 
 В тестах используется поддельный LLM, внешние API не вызываются.
 
+Smoke-тест desktop UI (навигация, занятие и размеры окна):
+
+```powershell
+python -m pytest -q desktop\tests
+```
+
+Детерминированные скриншоты всех страниц можно обновить командой `python scripts\capture_desktop_ui.py`.
+
 ## Сборка desktop в `.exe`
 
 ```powershell
 pip install pyinstaller
 cd desktop
-pyinstaller --noconfirm --clean --onefile --windowed --name AI-Tutor --paths . run.py
+pyinstaller --noconfirm --clean AI-Tutor.spec
 ```
 
-Результат появится как `desktop/dist/AI-Tutor.exe`. Файл можно перенести отдельно; для изменения адреса backend положите рядом с ним `.env` с `BACKEND_URL`.
+Результат появится как `desktop/dist/AI-Tutor.exe`. Spec включает маскота, SVG-иконки и Windows icon. Файл можно перенести отдельно; для изменения адреса backend положите рядом с ним `.env` с `BACKEND_URL`.
 
 ## Основные файлы
 
@@ -117,7 +125,8 @@ pyinstaller --noconfirm --clean --onefile --windowed --name AI-Tutor --paths . r
 - `backend/app/tutor.py` — педагогические правила, состояния и LLM-контекст.
 - `backend/app/textbook.py` — локальный поиск по учебнику.
 - `backend/app/llm.py` — OpenAI-compatible клиент.
-- `desktop/app/main.py` — PySide6 UI и фоновые HTTP-запросы.
+- `desktop/app/ui/` — страницы, sidebar, виджеты и тема PySide6.
+- `desktop/app/services/` — фоновые HTTP-запросы и временные dashboard-данные.
 - `scripts/index_textbook.py` — индексатор PDF.
 
 ## Ограничения MVP и следующий этап
